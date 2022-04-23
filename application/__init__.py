@@ -15,8 +15,8 @@ data_r = df_r.values
 strategy_r = {3.0: 20, 8.0: 20}
 OverSample_random = RandomOverSampler(sampling_strategy = strategy_r)
 X_res, y_res = OverSample_random.fit_resample(data_r[:,:-1], data_r[:,-1])
-X_25percentile = np.percentile(X_res, 25, axis = 0)
-X_75percentile = np.percentile(X_res, 75, axis = 0)
+X_25percentile = np.percentile(data_r[:, :-1], 25, axis = 0)
+X_75percentile = np.percentile(data_r[:, :-1], 75, axis = 0)
 
 
 #train the model
@@ -88,10 +88,17 @@ def predict():
 temperary_dataset = []
 @app.route('/api/getDonatedData', methods=['GET', 'POST'])
 def donate_model():
+    global X_25percentile
+    global X_75percentile
+    global data_r
+    global temperary_dataset
     donated_data = request.get_json(force=True)
     donated_data = donated_data.values.tolist()
     temperary_dataset.append(donated_data)
     if len(temperary_dataset) > 10:
         data_r = np.append(data_r, np.array(temperary_dataset), axis = 0)
+        #Update 25th and 75th
+        X_25percentile = np.percentile(data_r[:, :-1], 25, axis = 0)
+        X_75percentile = np.percentile(data_r[:, :-1], 75, axis = 0)    
         temperary_dataset = []
         RF.fit(data_r)
