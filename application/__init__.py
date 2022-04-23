@@ -17,7 +17,7 @@ OverSample_random = RandomOverSampler(sampling_strategy = strategy_r)
 X_res, y_res = OverSample_random.fit_resample(data_r[:,:-1], data_r[:,-1])
 
 #train the model
-RF = RandomForestClassifier(n_estimators=500)
+RF = RandomForestClassifier(n_estimators=300)
 RF.fit(X_res, y_res)
 
 #create flask instance
