@@ -15,6 +15,9 @@ data_r = df_r.values
 strategy_r = {3.0: 20, 8.0: 20}
 OverSample_random = RandomOverSampler(sampling_strategy = strategy_r)
 X_res, y_res = OverSample_random.fit_resample(data_r[:,:-1], data_r[:,-1])
+X_25percentile = np.percentile(X_res, 25, axis = 0)
+X_75percentile = np.percentile(X_res, 75, axis = 0)
+
 
 #train the model
 RF = RandomForestClassifier(n_estimators=300)
@@ -23,16 +26,41 @@ RF.fit(X_res, y_res)
 #create flask instance
 app = Flask(__name__)
 
+
+#replace -1 with 25th and 75th percentile data of the corresponding features
+def process_missing_value(data):
+    complete_data_lower = []
+    complete_data_upper = []
+    for i in range(len(data)):
+        if data[i] != -1:
+            complete_data_lower.append(data[i])
+            complete_data_upper.append(data[i])
+        else:
+            complete_data_lower.append(X_25percentile[i])
+            complete_data_upper.append(X_75percentile[i])
+    complete_data_lower = np.array(complete_data_lower)
+    complete_data_upper = np.array(complete_data_upper)
+    return complete_data_lower, complete_data_upper
+
+
 #create api
 @app.route('/api', methods=['GET', 'POST'])
 def predict():
     #get data from request
     data = request.get_json(force=True)
     data = data.values
+    #process missing values
+    complete_data_lower, complete_data_upper = process_missing_value(data)
     #make predicon using model
     all_quality_scores = data_r[:, -1]
-    prediction = RF.predict(data)
-    prediction = prediction[0]
+    prediction_lower = RF.predict(complete_data_lower.reshape(1,-1))
+    prediction_upper = RF.predict(complete_data_upper.reshape(1,-1))
+    prediction_bound_1 = prediction_lower[0]
+    prediction_bound_2 = prediction_upper[0]
+    if prediction_bound_1 == prediction_bound_2:
+        prediction = [prediction_bound_1]
+    else:
+        prediction = [min(prediction_bound_1, prediction_bound_2), max(prediction_bound_1, prediction_bound_2)]
     #show the rank of the qualitu score
     quality_freq_tabel = Counter(all_quality_scores)
     quality_rank = len(all_quality_scores[all_quality_scores<=prediction])/len(all_quality_scores)
@@ -44,7 +72,7 @@ def predict():
     #construct dict
     statistics = dict({
         'User input data': data, #np.array with dimension of 1: np.array([.....])
-        'Predcited quality score': prediction, #an integer value
+        'Predcited quality score': prediction, #if there is no range, return [prediction(integer)], else return [lower bound(integer), upper bound(integer)]
         'All quality scores frequency table': quality_freq_tabel,
         'The rank of the wine among the dataset': quality_rank, #a dictionary{7: 13; 8: 20....}
         # np.array with dimension of 1: np.array([.....]), 11 values corresponding to 11 features
