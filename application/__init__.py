@@ -8,11 +8,11 @@ from collections import Counter
 
 #load data
 df_r = pd.read_csv("./wineData/winequality-red.csv", sep = ';')
-df_r.drop(['residual sugar', 'chlorides', 'density', 'pH'], axis = 1)
+df_r.drop(['residual sugar', 'chlorides', 'density', 'pH'], axis = 1, inplace=True)
 data_r = df_r.values
 
 df_w = pd.read_csv("./wineData/winequality-white.csv", sep = ';')
-df_w.drop(['citric acid', 'density', 'pH', 'sulphates'], axis = 1)
+df_w.drop(['citric acid', 'density', 'pH', 'sulphates'], axis = 1, inplace=True)
 data_w = df_w.values
 
 #Oversample the rare labels
@@ -66,14 +66,14 @@ def process_missing_value(data, wine_type):
     return complete_data_lower, complete_data_mid, complete_data_upper
 
 def translate_rw_data(data):
-    result = [data['fixedAcidity'], data['volatileAcidity'], data['citricAcid'], data['freeSulfurDioxide'], 
-    data['totalSulfurDioxide'], data['sulphates'], data['alcohol']]
+    result = [data['fixedAcidity'], data['volatileAcidity'], data['citricAcid'], data['freeSulfurDioxide'], data['totalSulfurDioxide'],
+        data['sulfates'], data['alcohol']]
     result = np.array(result)
     return result
 
 def translate_ww_data(data):
     result = [data['fixedAcidity'], data['volatileAcidity'], data['residualSugar'], data['chlorides'], 
-    data['freeSulfurDioxide'], data['totalSulfurDioxide'], data['alcohol']]
+        data['freeSulfurDioxide'], data['totalSulfurDioxide'], data['alcohol']]
     result = np.array(result)
     return result
 
@@ -104,7 +104,7 @@ def predict():
         #show high quality wine data
         good_wine_data = data_r[all_quality_scores>=8]
 
-    elif wine_type == 'white':
+    else:
         dp_w = translate_ww_data(data)
         #process missing values
         complete_data_lower, _, complete_data_upper = process_missing_value(dp_w, wine_type)
@@ -135,15 +135,14 @@ def predict():
     
     #construct dict
     statistics = dict({
-        'User input data': data, #np.array with dimension of 1: np.array([.....])
-        'Predcited quality score': prediction, #if there is no range, return [prediction(integer)], else return [lower bound(integer), upper bound(integer)]
-        'All quality scores frequency table': quality_freq_tabel,
-        'The rank of the wine among the dataset': quality_rank, #a dictionary{7: 13; 8: 20....}
+        'qualityScore': prediction, #if there is no range, return [prediction(integer)], else return [lower bound(integer), upper bound(integer)]
+        'allQualityScoresFreq': quality_freq_tabel,
+        'qualityRank': quality_rank, #a dictionary{7: 13; 8: 20....}
         # np.array with dimension of 1: np.array([.....]), 11 values corresponding to 11 features
-        'Feature importance': feature_importance,
-        'Feature importance std': feature_importance_std,
+        'featureImportance': feature_importance.tolist(),
+        'featureImportanceStd': feature_importance_std.tolist(),
         #np.array (n by 12 columns, including the quality score) of all the data points with a score >= 8
-        'High quality wine data': good_wine_data,
+        'highQualityWineData': good_wine_data.tolist(),
     })
     
     return Response(json.dumps(statistics))
@@ -159,6 +158,8 @@ def donate_model():
     global X_25percentile_w
     global X_50percentile_w
     global X_75percentile_w
+    global temperary_dataset_r
+    global temperary_dataset_w
 
     donated_data = request.get_json(force=True)
     #inspect whether the data comes from red wine or white wine
@@ -192,3 +193,5 @@ def donate_model():
         X_75percentile_w = np.percentile(data_w, 75, axis = 0)    
         temperary_dataset_w = []
         RF_w.fit(data_w[:, :-1], data_w[:, -1])
+    
+    return Response("Data successfully submitted. Thank you for contributing!")
