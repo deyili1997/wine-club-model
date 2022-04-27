@@ -131,7 +131,7 @@ def predict():
         prediction = [min(prediction_bound_1, prediction_bound_2), max(prediction_bound_1, prediction_bound_2)]
     #show the rank of the qualitu score
     quality_freq_tabel = Counter(all_quality_scores)
-    quality_rank = len(all_quality_scores[all_quality_scores<=prediction[0]])/len(all_quality_scores)
+    quality_rank = len(all_quality_scores[all_quality_scores<prediction[0]])/len(all_quality_scores)
     
     #construct dict
     statistics = dict({
